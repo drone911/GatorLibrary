@@ -1,6 +1,8 @@
 #include <iostream>
+#include <string>
 
 #define HELP_MESSAGE "Usage: gatorLibrary /path/to/testcases-file"
+#define BOOK_NOT_FOUND(x) ("Book " + to_string(x) + "not found in the Library")
 
 using namespace std;
 
@@ -17,6 +19,10 @@ int performOperation(GatorLibrary *, string &);
 class Reservations
 {
     int i;
+    friend string to_string(const Reservations &reservations)
+    {
+        return "[]";
+    }
 };
 
 struct BookData
@@ -266,13 +272,57 @@ class GatorLibrary
         parent->color = Color::BLACK;
         grandparent->color = Color::RED;
     }
+    void printNode(BookNode *node)
+    {
+        BookData *bookData = node->bookData;
+
+        cout << "BookId = " << node->bookId << endl
+             << "Title = \"" << bookData->bookName << "\"" << endl
+             << "Author = \"" << bookData->authorName << "\"" << endl
+             << "Availability = \"" << (bookData->available ? "Yes" : "No") << "\"" << endl
+             << "BorrowedBy = " << ((bookData->borrowedBy) ? to_string(bookData->borrowedBy) : "None") << "\"" << endl
+             << "Reservations = " << ((bookData->reservations) ? to_string(*bookData->reservations) : "[]") << "\"" << endl;
+    }
+    BookNode *findNode(int bookId)
+    {
+        BookNode *current = head;
+        while (true)
+        {
+            if (current->bookId == bookId)
+            {
+                return current;
+            }
+            else if (current->bookId > bookId)
+            {
+                if (current->left != nullptr)
+                {
+                    current = current->left;
+                }
+                else
+                {
+                    return nullptr;
+                }
+            }
+            else
+            {
+                if (current->right != nullptr)
+                {
+                    current = current->right;
+                }
+                else
+                {
+                    return nullptr;
+                }
+            }
+        }
+    }
 
 public:
     GatorLibrary()
     {
         head = nullptr;
     }
-    void InsertBook(int bookId, string bookName, string authorName, bool available)
+    void insertBook(int bookId, string bookName, string authorName, bool available)
     {
         cout << bookId << "-" << endl;
         cout << bookName << "-" << endl;
@@ -326,6 +376,27 @@ public:
         if (newNode->parent->color == Color::RED)
         {
             balanceAfterInsert(newNode);
+        }
+    }
+
+    void printBooks(int startBookId, int endBookId)
+    {
+        for (int bookId = startBookId; bookId <= endBookId; bookId++)
+        {
+            printBookById(bookId);
+        }
+    }
+
+    void printBookById(int bookId)
+    {
+        BookNode *node = findNode(bookId);
+        if (node)
+        {
+            printNode(node);
+        }
+        else
+        {
+            cout << BOOK_NOT_FOUND(bookId) << endl;
         }
     }
 };
@@ -442,20 +513,28 @@ int performOperation(GatorLibrary *library_instance, string &operation)
 
     if (operation.find("PrintBook") == 0)
     {
+        tokenize(operation.substr(operation.find("(")), tokens);
+        int bookId = stoi(tokens[0]);
+
+        library_instance->printBookById(bookId);
     }
     else if (operation.find("PrintBooks") == 0)
     {
+        tokenize(operation.substr(operation.find("(")), tokens);
+        int startBookId = stoi(tokens[0]);
+        int endBookId = stoi(tokens[1]);
+
+        library_instance->printBooks(startBookId, endBookId);
     }
     else if (operation.find("InsertBook") == 0)
     {
         tokenize(operation.substr(operation.find("(")), tokens);
-
         int bookId = stoi(tokens[0]);
         string bookName = stripCharacters(tokens[1], '\"');
         string authorName = stripCharacters(tokens[2], '\"');
         bool availibility = toBool(stripCharacters(tokens[3], '\"'));
 
-        library_instance->InsertBook(bookId, bookName, authorName, availibility);
+        library_instance->insertBook(bookId, bookName, authorName, availibility);
     }
     else if (operation.find("BorrowBook") == 0)
     {
