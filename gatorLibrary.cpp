@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string>
+#include <chrono>
+#include <vector>
 
 #define HELP_MESSAGE "Usage: gatorLibrary /path/to/testcases-file"
 #define BOOK_NOT_FOUND(x) ("Book " + to_string(x) + "not found in the Library")
@@ -16,12 +18,79 @@ class Reservations;
 string readLine(FILE *);
 int performOperation(GatorLibrary *, string &);
 
+struct Reservation
+{
+    int priority;
+    int patronId;
+    time_t timeOfReservation;
+    Reservation(int priority, int patronId, time_t timeOfReservation) : priority(priority), patronId(patronId), timeOfReservation(timeOfReservation)
+    {
+    }
+};
+
+int compareReservation(Reservation &n1, Reservation &n2)
+{
+    if (n1.priority == n2.priority)
+    {
+        if (n1.timeOfReservation == n2.timeOfReservation)
+        {
+            return 0;
+        }
+        else
+        {
+            return n1.timeOfReservation - n2.timeOfReservation;
+        }
+    }
+    else
+    {
+        return n1.patronId - n2.patronId;
+    }
+}
+
 class Reservations
 {
-    int i;
+    vector<Reservation> heap;
+
+    void heapify()
+    {
+        int n = heap.size();
+        int i = n - 1;
+        while (i > 0)
+        {
+            int parent = (i - 1) / 2;
+            if (compareReservation(heap[i], heap[parent]) < 0)
+            {
+                swap(heap[i], heap[parent]);
+                i = parent;
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
+public:
+    void insertReservation(int priority, int patronId, time_t timeOfReservation)
+    {
+        heap.push_back(Reservation(priority, patronId, timeOfReservation));
+        heapify();
+    }
+
     friend string to_string(const Reservations &reservations)
     {
-        return "[]";
+        if (reservations.heap.empty())
+        {
+            return "[]";
+        }
+        string result = "[";
+        for (Reservation reservation : reservations.heap)
+        {
+            result += to_string(reservation.patronId);
+            result += ',';
+        }
+        result[result.size() - 1] = ']';
+        return result;
     }
 };
 
@@ -399,6 +468,32 @@ public:
             cout << BOOK_NOT_FOUND(bookId) << endl;
         }
     }
+    void borrowBook(int patronId, int bookId, int patronPriority)
+    {
+        BookNode *node = findNode(bookId);
+        if (node->bookData->available == true)
+        {
+            cout << "Book " << node->bookId << " Borrowed By Patron " << patronId << endl;
+            node->bookData->available = false;
+            node->bookData->borrowedBy = patronId;
+        }
+        else
+        {
+            // Get the count of seconds
+            auto currentTimePoint = chrono::system_clock::now();
+            auto epoch = currentTimePoint.time_since_epoch();
+            auto seconds = chrono::duration_cast<chrono::seconds>(epoch);
+
+            time_t currentTimeInSeconds = seconds.count();
+
+            if (node->bookData->reservations == nullptr)
+            {
+                node->bookData->reservations = new Reservations();
+            }
+            node->bookData->reservations->insertReservation(patronPriority, patronId, currentTimeInSeconds);
+            cout << "Book " << node->bookId << " Reserved By Patron " << patronId << endl;
+        }
+    }
 };
 
 int main(int argc, char *argv[])
@@ -538,6 +633,12 @@ int performOperation(GatorLibrary *library_instance, string &operation)
     }
     else if (operation.find("BorrowBook") == 0)
     {
+        tokenize(operation.substr(operation.find("(")), tokens);
+        int patronId = stoi(tokens[0]);
+        int bookId = stoi(tokens[1]);
+        int patronPriority = stoi(tokens[2]);
+
+        library_instance->borrowBook(patronId, bookId, patronPriority);
     }
     else if (operation.find("ReturnBook") == 0)
     {
