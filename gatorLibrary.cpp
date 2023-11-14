@@ -49,12 +49,30 @@ int compareReservation(Reservation &n1, Reservation &n2)
 
 class Reservations
 {
-    vector<Reservation> heap;
 
-    void heapify()
+    void heapifyDown(int index)
     {
-        int n = heap.size();
-        int i = n - 1;
+        int leftChild = 2 * index + 1;
+        int rightChild = 2 * index + 2;
+        int i = index;
+
+        if (leftChild < heap.size() && compareReservation(heap[leftChild], heap[i]))
+        {
+            i = leftChild;
+        }
+        if (rightChild < heap.size() && compareReservation(heap[rightChild], heap[i]))
+        {
+            i = rightChild;
+        }
+        if (i != index)
+        {
+            swap(heap[i], heap[index]);
+            heapifyDown(i);
+        }
+    }
+    void heapifyUp(int index)
+    {
+        int i = index - 1;
         while (i > 0)
         {
             int parent = (i - 1) / 2;
@@ -71,12 +89,26 @@ class Reservations
     }
 
 public:
+    vector<Reservation> heap;
+
     void insertReservation(int priority, int patronId, time_t timeOfReservation)
     {
         heap.push_back(Reservation(priority, patronId, timeOfReservation));
-        heapify();
+        heapifyUp(heap.size() - 1);
     }
 
+    Reservation popReservation()
+    {
+        Reservation poppedReservation = heap[0];
+        heap[0] = heap.back();
+        heap.pop_back();
+
+        if (!heap.empty())
+        {
+            heapifyDown(0);
+        }
+        return poppedReservation;
+    }
     friend string to_string(const Reservations &reservations)
     {
         if (reservations.heap.empty())
@@ -473,9 +505,9 @@ public:
         BookNode *node = findNode(bookId);
         if (node->bookData->available == true)
         {
-            cout << "Book " << node->bookId << " Borrowed By Patron " << patronId << endl;
             node->bookData->available = false;
             node->bookData->borrowedBy = patronId;
+            cout << "Book " << node->bookId << " Borrowed by Patron " << patronId << endl;
         }
         else
         {
@@ -491,7 +523,27 @@ public:
                 node->bookData->reservations = new Reservations();
             }
             node->bookData->reservations->insertReservation(patronPriority, patronId, currentTimeInSeconds);
-            cout << "Book " << node->bookId << " Reserved By Patron " << patronId << endl;
+            cout << "Book " << node->bookId << " Reserved by Patron " << patronId << endl;
+        }
+    }
+    void returnBook(int patronId, int bookId)
+    {
+        BookNode *node = findNode(bookId);
+
+        node->bookData->borrowedBy = -1;
+        node->bookData->available = true;
+
+        cout << "Book " << bookId << " Returned by Patron " << patronId << endl;
+
+        // If reservations are available
+        if (!node->bookData->reservations->heap.empty())
+        {
+            Reservation nextReservation = node->bookData->reservations->popReservation();
+
+            node->bookData->borrowedBy = nextReservation.patronId;
+            node->bookData->available = false;
+
+            cout << "Book " << bookId << " Allotted to Patron " << nextReservation.patronId << endl;
         }
     }
 };
@@ -642,6 +694,11 @@ int performOperation(GatorLibrary *library_instance, string &operation)
     }
     else if (operation.find("ReturnBook") == 0)
     {
+        tokenize(operation.substr(operation.find("(")), tokens);
+        int patronId = stoi(tokens[0]);
+        int bookId = stoi(tokens[1]);
+
+        library_instance->returnBook(patronId, bookId);
     }
     else if (operation.find("DeleteBook") == 0)
     {
