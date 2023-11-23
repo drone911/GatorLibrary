@@ -1,5 +1,16 @@
-all: gatorLibrary.cpp
-	g++ gatorLibrary.cpp -o gatorLibrary
+all:
+	g++ main.cpp gatorLibrary.cpp reservations.cpp -o gatorLibrary
 
-run: gatorLibrary
-	./gatorLibrary ./testcase-1.txt
+test: all
+	for testfile in test?.txt; do \
+		./gatorLibrary $$testfile; \
+	done;
+	for testfile in test?.txt; do \
+		base=$$(basename $${testfile} .txt); \
+		echo "\033[1;32m[Tests] Comparing files $${base}_output_file.txt and $${base}.output.txt\033[0m"; \
+		diff -iZ $${base}_output_file.txt $${base}.output.txt; \
+		echo "\033[1;32m[Tests] Finished comparing files $${base}_output_file.txt and $${base}.output.txt\033[0m\033[0m"; \
+	done;
+
+clean:
+	rm gatorLibrary
