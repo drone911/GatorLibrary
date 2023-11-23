@@ -24,3 +24,8 @@ output.
     - The Reservations class implements our business logic for inserting new reservations and popping the highest priority reservations.
     - It also implements private functions to heapify the heap again after inserts and deletes.
     - A structure to hold a reservation (named *Reservation*) and a function to compare two reservations are also defined
+
+# How to use
+- Run ``make`` or ``make all`` to build the executable ``gatorLibrary``.
+- Run ``make test`` to run automated test cases in present in the folder ``tests``.
+- Run ``make clean`` to remove the executable ``gatorLibrary`` and delete outputs generated during tests.
